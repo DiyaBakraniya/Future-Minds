@@ -23,9 +23,18 @@ exports.handler = async (event, context) => {
         const data = JSON.parse(event.body || "{}");
 
         // Handle flexible naming (Accepts "language", "Language", "Audio Format", etc.)
-        const language = data.language || data.Language;
-        const audio_format = data.audio_format || data['Audio Format'] || data.AudioFormat || data.format;
-        const audio_base64 = data.audio_base64 || data['Audio Base64 Format'] || data.AudioBase64 || data.audio;
+        const language =
+            data.language || data.Language;
+
+        const audio_format =
+            data.audio_format ||
+            data.audioFormat ||
+            data['Audio Format'];
+
+        const audio_base64 =
+            data.audio_base64 ||
+            data.audioBase64 ||
+            data['Audio Base64 Format'];
 
         // Validate fields
         if (!language || !audio_format || !audio_base64) {
