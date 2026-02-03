@@ -59,13 +59,13 @@ exports.handler = async (event, context) => {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                status: "success",
-                is_ai_generated: isAiGenerated,
+                label: isAiGenerated ? "scam" : "safe",
                 confidence: parseFloat(confidence.toFixed(2)),
-                detected_language: language,
-                message: isAiGenerated
+                reason: isAiGenerated
                     ? "AI-generated voice patterns detected."
-                    : "Human voice patterns validated."
+                    : "Human voice patterns validated.",
+                detected_language: language,
+                status: "success"
             }),
         };
     } catch (error) {

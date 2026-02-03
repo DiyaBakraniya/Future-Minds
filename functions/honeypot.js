@@ -20,12 +20,11 @@ exports.handler = async (event, context) => {
             "Content-Type": "application/json",
         },
         body: JSON.stringify({
+            label: "secured",
+            confidence: 1.0,
+            reason: "Honeypot service is reachable, secured, and responding correctly.",
             status: "success",
-            message: "Honeypot service is reachable, secured, and responding correctly.",
-            timestamp: new Date().toISOString(),
-            service: "Agentic Honey-Pot",
-            version: "1.0.0",
-            protection: "Active"
+            timestamp: new Date().toISOString()
         }),
     };
 };
