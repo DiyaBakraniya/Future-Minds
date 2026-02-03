@@ -1,6 +1,6 @@
 exports.handler = async (event, context) => {
     // 1. Check Authentication (Header: x-api-key)
-    const apiKey = event.headers['x-api-key'];
+    const apiKey = event.headers['x-api-key'] || event.headers['X-API-KEY'];
     const VALID_KEY = "FRAUDSHIELD-AI-LOCAL-2026";
 
     if (apiKey !== VALID_KEY) {
@@ -20,14 +20,22 @@ exports.handler = async (event, context) => {
 
     try {
         // 3. Parse Request Body
-        const data = JSON.parse(event.body);
-        const { language, audio_format, audio_base64 } = data;
+        const data = JSON.parse(event.body || "{}");
+
+        // Handle flexible naming (Accepts "language", "Language", "Audio Format", etc.)
+        const language = data.language || data.Language;
+        const audio_format = data.audio_format || data['Audio Format'] || data.AudioFormat || data.format;
+        const audio_base64 = data.audio_base64 || data['Audio Base64 Format'] || data.AudioBase64 || data.audio;
 
         // Validate fields
         if (!language || !audio_format || !audio_base64) {
             return {
                 statusCode: 400,
-                body: JSON.stringify({ error: "Missing required fields: language, audio_format, or audio_base64" }),
+                body: JSON.stringify({
+                    error: "Missing required fields",
+                    hint: "Ensure your form fields are named Language, Audio Format, and Audio Base64 Format",
+                    received_keys: Object.keys(data)
+                }),
             };
         }
 
