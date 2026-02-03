@@ -42,31 +42,40 @@ app.post('/api/analyze-voice', (req, res) => {
     const confidence = 0.85 + (Math.random() * 0.1);
 
     res.json({
-        status: "success",
-        is_ai_generated: isAiGenerated,
+        label: isAiGenerated ? "scam" : "safe",
         confidence: parseFloat(confidence.toFixed(2)),
-        detected_language: language,
-        message: isAiGenerated
+        reason: isAiGenerated
             ? "AI-generated voice patterns detected."
-            : "Human voice patterns validated."
+            : "Human voice patterns validated.",
+        detected_language: language,
+        status: "success"
     });
 });
 
 /**
  * Agentic Honey-Pot Endpoint
  */
-app.get('/api/honeypot', (req, res) => {
+app.post('/api/honeypot', (req, res) => {
     const apiKey = req.headers['x-api-key'] || req.headers['X-API-KEY'];
 
     if (apiKey !== VALID_API_KEY) {
         return res.status(401).json({ status: "failed", error: "Unauthorized: Invalid x-api-key" });
     }
 
+    const body = req.body || {};
+    const userMessage = (body.message || body.text || "").toLowerCase();
+
+    const scamKeywords = ["winner", "lottery", "urgent", "bank", "password", "gift", "account"];
+    const isScam = scamKeywords.some(keyword => userMessage.includes(keyword));
+
     res.json({
+        label: isScam ? "scam" : "safe",
+        confidence: userMessage.length > 0 ? 0.95 : 1.0,
+        reason: isScam
+            ? "Scam indicators detected in message."
+            : "Honeypot service is reachable and secured.",
         status: "success",
-        message: "Honeypot service is reachable, secured, and responding correctly.",
-        timestamp: new Date().toISOString(),
-        service: "Agentic Honey-Pot"
+        timestamp: new Date().toISOString()
     });
 });
 

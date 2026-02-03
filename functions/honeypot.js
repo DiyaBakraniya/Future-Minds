@@ -13,16 +13,25 @@ exports.handler = async (event, context) => {
         };
     }
 
-    // 2. Return Success Response (Tester looks for reachable and secured status)
+    // 2. Parse Request Body (Always allow POST, even if body is empty)
+    const body = JSON.parse(event.body || "{}");
+    const userMessage = (body.message || body.text || "").toLowerCase();
+
+    // 3. Simple Intelligent Logic
+    const scamKeywords = ["winner", "lottery", "urgent", "bank", "password", "gift", "account"];
+    const isScam = scamKeywords.some(keyword => userMessage.includes(keyword));
+
     return {
         statusCode: 200,
         headers: {
             "Content-Type": "application/json",
         },
         body: JSON.stringify({
-            label: "secured",
-            confidence: 1.0,
-            reason: "Honeypot service is reachable, secured, and responding correctly.",
+            label: isScam ? "scam" : "safe",
+            confidence: userMessage.length > 0 ? 0.95 : 1.0,
+            reason: isScam
+                ? "Scam indicators detected in message."
+                : "Honeypot service is reachable and secured.",
             status: "success",
             timestamp: new Date().toISOString()
         }),
