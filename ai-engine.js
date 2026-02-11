@@ -248,7 +248,115 @@ class FraudDetectionEngine {
         };
         return simulations[type] || simulations.safe;
     }
+
+    /**
+     * Honeypot: Extract intelligence from text
+     */
+    extractIntelligence(text) {
+        const intel = {
+            bankAccounts: [],
+            upiIds: [],
+            phishingLinks: [],
+            phoneNumbers: [],
+            suspiciousKeywords: []
+        };
+
+        // Bank Accounts (simple 10-16 digit pattern)
+        const accountMatches = text.match(/\b\d{10,16}\b/g);
+        if (accountMatches) intel.bankAccounts.push(...accountMatches);
+
+        // UPI IDs (pattern: something@bank)
+        const upiMatches = text.match(/[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}/g);
+        if (upiMatches) intel.upiIds.push(...upiMatches);
+
+        // Phishing Links
+        const linkMatches = text.match(/https?:\/\/[^\s]+/g);
+        if (linkMatches) {
+            linkMatches.forEach(link => {
+                if (!link.includes('google.com') && !link.includes('amazon.com')) {
+                    intel.phishingLinks.push(link);
+                }
+            });
+        }
+
+        // Phone Numbers
+        const phoneMatches = text.match(/(\+91|0)?[6-9]\d{9}/g);
+        if (phoneMatches) intel.phoneNumbers.push(...phoneMatches);
+
+        // Suspicious Keywords
+        const allKeywords = [].concat(...Object.values(this.fraudKeywords));
+        allKeywords.forEach(word => {
+            if (text.toLowerCase().includes(word.toLowerCase())) {
+                intel.suspiciousKeywords.push(word);
+            }
+        });
+
+        // Deduplicate
+        for (const key in intel) {
+            intel[key] = [...new Set(intel[key])];
+        }
+
+        return intel;
+    }
+
+    /**
+     * Generate a human-like response for the Honeypot
+     */
+    generateHoneypotReply(message, history) {
+        const text = message.toLowerCase();
+        
+        if (text.includes("bank") || text.includes("blocked") || text.includes("verify")) {
+            return "Oh no! Why is my account being suspended? What should I do?";
+        }
+        
+        if (text.includes("upi") || text.includes("payment") || text.includes("id")) {
+            return "I'm not sure where to find my UPI ID. Can you tell me how to check it?";
+        }
+        
+        if (text.includes("link") || text.includes("click") || text.includes("open")) {
+            return "The link is not opening on my phone. Is there another way?";
+        }
+        
+        if (text.includes("winner") || text.includes("lottery") || text.includes("prize")) {
+            return "Wow, really? I won? How do I get the money?";
+        }
+
+        return "I'm a bit confused, can you explain what I need to do again?";
+    }
 }
 
-// Export for use in app.js
+// Export for use in server.js
 const fraudEngine = new FraudDetectionEngine();
+
+// Simple HTTPS post helper to avoid axios dependency
+const https = require('https');
+
+function sendCallback(url, data) {
+    return new Promise((resolve, reject) => {
+        const urlObj = new URL(url);
+        const postData = JSON.stringify(data);
+        
+        const options = {
+            hostname: urlObj.hostname,
+            port: urlObj.port || 443,
+            path: urlObj.pathname,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': postData.length
+            }
+        };
+
+        const req = https.request(options, (res) => {
+            let body = '';
+            res.on('data', (chunk) => body += chunk);
+            res.on('end', () => resolve(body));
+        });
+
+        req.on('error', (e) => reject(e));
+        req.write(postData);
+        req.end();
+    });
+}
+
+module.exports = { fraudEngine, sendCallback };

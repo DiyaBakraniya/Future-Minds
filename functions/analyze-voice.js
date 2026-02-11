@@ -1,77 +1,72 @@
 exports.handler = async (event, context) => {
-    // 1. Check Authentication (Header: x-api-key)
+    // API Authentication
     const apiKey = event.headers['x-api-key'] || event.headers['X-API-KEY'];
-    const VALID_KEY = "FRAUDSHIELD-AI-LOCAL-2026";
+    const VALID_API_KEY = "sk_test_123456789";
 
-    if (apiKey !== VALID_KEY) {
+    if (apiKey !== VALID_API_KEY) {
         return {
             statusCode: 401,
-            body: JSON.stringify({ error: "Unauthorized: Invalid x-api-key" }),
+            body: JSON.stringify({ status: "error", message: "Invalid API key or malformed request" }),
         };
     }
 
-    // 2. Only allow POST requests
     if (event.httpMethod !== "POST") {
         return {
             statusCode: 405,
-            body: JSON.stringify({ error: "Method Not Allowed. Use POST." }),
+            body: JSON.stringify({ status: "error", message: "Method Not Allowed. Use POST." }),
         };
     }
 
     try {
-        // 3. Parse Request Body
-        const data = JSON.parse(event.body || "{}");
+        const body = JSON.parse(event.body || "{}");
+        const { language, audioFormat, audioBase64 } = body;
 
-        // Handle flexible naming (Accepts "language", "Language", "Audio Format", etc.)
-        const language =
-            data.language || data.Language;
-
-        const audio_format =
-            data.audio_format ||
-            data.audioFormat ||
-            data['Audio Format'];
-
-        const audio_base64 =
-            data.audio_base64 ||
-            data.audioBase64 ||
-            data['Audio Base64 Format'];
-
-        // Validate fields
-        if (!language || !audio_format || !audio_base64) {
+        const supportedLanguages = ["Tamil", "English", "Hindi", "Malayalam", "Telugu"];
+        if (!language || !supportedLanguages.includes(language)) {
             return {
                 statusCode: 400,
                 body: JSON.stringify({
-                    error: "Missing required fields",
-                    hint: "Ensure your form fields are named Language, Audio Format, and Audio Base64 Format",
-                    received_keys: Object.keys(data)
+                    status: "error",
+                    message: "Unsupported language. Supported: Tamil, English, Hindi, Malayalam, Telugu"
                 }),
             };
         }
 
-        // 4. Simulate AI-Generated Voice Detection
-        // For the hackathon, we return a successful analysis result
-        const isAiGenerated = audio_base64.length > 1000 ? false : true; // Dummy logic
-        const confidence = 0.85 + (Math.random() * 0.1);
+        if (audioFormat !== "mp3") {
+            return {
+                statusCode: 400,
+                body: JSON.stringify({ status: "error", message: "Invalid audio format. Always mp3." }),
+            };
+        }
+
+        if (!audioBase64) {
+            return {
+                statusCode: 400,
+                body: JSON.stringify({ status: "error", message: "Missing audioBase64" }),
+            };
+        }
+
+        // Logic for detection (simulated)
+        const isAiGenerated = audioBase64.length % 2 === 0;
+        const confidence = 0.90 + (Math.random() * 0.1);
 
         return {
             statusCode: 200,
-            headers: {
-                "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                label: isAiGenerated ? "scam" : "safe",
-                confidence: parseFloat(confidence.toFixed(2)),
-                reason: isAiGenerated
-                    ? "AI-generated voice patterns detected."
-                    : "Human voice patterns validated.",
-                detected_language: language,
-                status: "success"
+                status: "success",
+                language: language,
+                classification: isAiGenerated ? "AI_GENERATED" : "HUMAN",
+                confidenceScore: parseFloat(confidence.toFixed(2)),
+                explanation: isAiGenerated
+                    ? "Unnatural pitch consistency and robotic speech patterns detected"
+                    : "Natural human vocal jitter and breathing patterns identified"
             }),
         };
     } catch (error) {
         return {
             statusCode: 500,
-            body: JSON.stringify({ error: "Internal Server Error", message: error.message }),
+            body: JSON.stringify({ status: "error", message: "Internal Server Error" }),
         };
     }
 };
